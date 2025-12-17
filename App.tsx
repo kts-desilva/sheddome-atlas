@@ -1,29 +1,29 @@
 import React, { useState } from 'react';
-import { Layers, Activity, Database, Scissors, Tag, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Layers, Activity, Database, Scissors, Tag, ChevronRight, ArrowLeft, FlaskConical, Upload, Search as SearchIcon, Loader2 } from 'lucide-react';
 import SearchBar from './components/SearchBar';
 import PeptideMap from './components/PeptideMap';
 import MetricsPanel from './components/MetricsPanel';
 import GlobalAtlas from './components/GlobalAtlas';
 import LoadingAnimation from './components/LoadingAnimation';
-import { fetchProteinData } from './services/geminiService';
+import DataUploader from './components/DataUploader';
+import { fetchProteinData, annotateProteinData } from './services/geminiService';
 import { ProteinData } from './types';
 
 type ViewMode = 'home' | 'dashboard' | 'global';
+type DataSourceMode = 'ai' | 'upload';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewMode>('home');
+  const [sourceMode, setSourceMode] = useState<DataSourceMode>('ai');
   const [data, setData] = useState<ProteinData | null>(null);
   const [interpretation, setInterpretation] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [annotating, setAnnotating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async (query: string) => {
     setLoading(true);
     setError(null);
-    // Stay on current view to show loading animation in context, 
-    // or switch to dashboard if we want a unified loading experience.
-    // Let's keep context for Home, but switch for Dashboard.
-    
     try {
       const result = await fetchProteinData(query);
       setData(result.data);
@@ -35,6 +35,30 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUserUpload = async (uploadedData: Partial<ProteinData>, needsAnnotation: boolean) => {
+      if (needsAnnotation) {
+          setAnnotating(true);
+          setError(null);
+          // CSV Uploaded, now fetching biological context
+          try {
+              const result = await annotateProteinData(uploadedData);
+              setData(result.data);
+              setInterpretation(result.interpretation);
+              setView('dashboard');
+          } catch (err) {
+              console.error(err);
+              setError("Failed to annotate CSV data using AI. Please check your API key.");
+          } finally {
+              setAnnotating(false);
+          }
+      } else {
+          // JSON Uploaded (Complete)
+          setData(uploadedData as ProteinData);
+          setInterpretation("Data uploaded by user. Interpretation requires external analysis.");
+          setView('dashboard');
+      }
   };
 
   const NavItem = ({ mode, label, icon: Icon }: { mode: ViewMode, label: string, icon: any }) => (
@@ -67,7 +91,7 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2">
-             <NavItem mode="home" label="Search" icon={ArrowLeft} />
+             <NavItem mode="home" label="Start" icon={ArrowLeft} />
              <div className="h-6 w-px bg-gray-200 mx-2"></div>
              <NavItem mode="dashboard" label="Protein Dashboard" icon={Activity} />
              <NavItem mode="global" label="Global Atlas" icon={Database} />
@@ -78,36 +102,80 @@ const App: React.FC = () => {
       {/* Main Content Area */}
       <main className="container mx-auto px-6 py-8">
         
-        {/* VIEW: HOME (SEARCH CENTERED) */}
+        {/* VIEW: HOME */}
         {view === 'home' && (
-            <div className="max-w-3xl mx-auto pt-20 text-center animate-fade-in-up">
-                <div className="mb-8 inline-flex items-center justify-center p-3 bg-science-50 rounded-2xl mb-6">
-                    <Scissors className="w-8 h-8 text-science-500" />
-                </div>
-                <h1 className="text-5xl font-extrabold text-slate-900 mb-6 tracking-tight">
-                    Decode the <span className="text-transparent bg-clip-text bg-gradient-to-r from-science-600 to-indigo-600">Secretome</span>
-                </h1>
+            <div className="max-w-3xl mx-auto pt-16 animate-fade-in-up">
                 
+                <div className="text-center mb-10">
+                    <div className="mb-6 inline-flex items-center justify-center p-3 bg-science-50 rounded-2xl">
+                        <Scissors className="w-8 h-8 text-science-500" />
+                    </div>
+                    <h1 className="text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
+                        Decode the <span className="text-transparent bg-clip-text bg-gradient-to-r from-science-600 to-indigo-600">Ectodomain</span>
+                    </h1>
+                    <p className="text-xl text-slate-500 leading-relaxed">
+                        Visualize ectodomain shedding events across tissues and fluids.
+                    </p>
+                </div>
+
+                {/* Source Toggle */}
+                <div className="flex justify-center mb-8">
+                    <div className="bg-gray-100 p-1 rounded-xl flex">
+                        <button 
+                            onClick={() => setSourceMode('ai')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                                sourceMode === 'ai' 
+                                ? 'bg-white text-science-600 shadow-sm' 
+                                : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                        >
+                            <FlaskConical className="w-4 h-4" />
+                            AI Simulation
+                        </button>
+                        <button 
+                             onClick={() => setSourceMode('upload')}
+                             className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                                sourceMode === 'upload' 
+                                ? 'bg-white text-science-600 shadow-sm' 
+                                : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                        >
+                            <Upload className="w-4 h-4" />
+                            Upload Data
+                        </button>
+                    </div>
+                </div>
+
                 {loading ? (
-                    <div className="mt-12 bg-white p-8 rounded-3xl shadow-xl border border-science-100">
+                    <div className="mt-8 bg-white p-8 rounded-3xl shadow-xl border border-science-100">
                         <LoadingAnimation />
+                    </div>
+                ) : annotating ? (
+                    <div className="mt-8 bg-white p-12 rounded-3xl shadow-xl border border-science-100 text-center">
+                        <div className="flex justify-center mb-6">
+                            <Loader2 className="w-12 h-12 text-science-600 animate-spin" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Annotating Experimental Data</h3>
+                        <p className="text-gray-500">Mapping your CSV peptides to Uniprot domains and calculating shedding scores using AI...</p>
                     </div>
                 ) : (
                     <>
-                        <p className="text-xl text-slate-500 mb-10 leading-relaxed">
-                            Identify substrates, analyze sheddase cleavage sites, and visualize ectodomain shedding events across tissues and fluids.
-                        </p>
-                        
-                        <div className="bg-white p-2 rounded-2xl shadow-xl border border-gray-100 transform transition-all hover:scale-[1.01]">
-                            <SearchBar onSearch={handleSearch} loading={loading} />
-                        </div>
+                        {sourceMode === 'ai' ? (
+                            <div className="bg-white p-2 rounded-2xl shadow-xl border border-gray-100 transform transition-all hover:scale-[1.01]">
+                                <SearchBar onSearch={handleSearch} loading={loading} />
+                            </div>
+                        ) : (
+                            <DataUploader onDataLoaded={handleUserUpload} />
+                        )}
 
-                        <div className="mt-12 flex gap-4 justify-center text-sm text-gray-400">
-                            <span>Try:</span>
-                            <button onClick={() => handleSearch('EGFR')} className="hover:text-science-600 underline">EGFR</button>
-                            <button onClick={() => handleSearch('ADAM10')} className="hover:text-science-600 underline">ADAM10</button>
-                            <button onClick={() => handleSearch('NOTCH1')} className="hover:text-science-600 underline">NOTCH1</button>
-                        </div>
+                        {sourceMode === 'ai' && (
+                            <div className="mt-12 flex gap-4 justify-center text-sm text-gray-400">
+                                <span>Try:</span>
+                                <button onClick={() => handleSearch('EGFR')} className="hover:text-science-600 underline">EGFR</button>
+                                <button onClick={() => handleSearch('ADAM10')} className="hover:text-science-600 underline">ADAM10</button>
+                                <button onClick={() => handleSearch('NOTCH1')} className="hover:text-science-600 underline">NOTCH1</button>
+                            </div>
+                        )}
                     </>
                 )}
                 
@@ -154,6 +222,11 @@ const App: React.FC = () => {
                                             <Tag className="w-3 h-3" /> Substrate
                                         </span>
                                      )}
+                                     {data.dataSources.method.includes('CSV') && (
+                                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            <FlaskConical className="w-3 h-3" /> Hybrid (CSV + AI)
+                                         </span>
+                                     )}
                                 </div>
                                 <p className="text-gray-500 max-w-2xl">{data.description}</p>
                             </div>
@@ -197,7 +270,7 @@ const App: React.FC = () => {
                             </div>
 
                             {/* Right Col: Cleavage Site List */}
-                            <div className="col-span-12 lg:col-span-4">
+                            <div className="col-span-12 lg:col-span-4 space-y-8">
                                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm sticky top-24">
                                     <h3 className="font-bold text-lg text-gray-900 mb-4 flex items-center gap-2">
                                         <Scissors className="w-5 h-5 text-emerald-500" />
@@ -225,6 +298,21 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Data Provenance Footer */}
+                        {data.dataSources && (
+                            <div className="bg-science-50 rounded-xl p-4 border border-science-100 flex flex-col md:flex-row items-center gap-4 text-sm text-science-800">
+                                <FlaskConical className="w-5 h-5 flex-shrink-0" />
+                                <div className="flex-1 text-center md:text-left">
+                                    <span className="font-bold">Data Provenance ({data.dataSources.method.includes('CSV') ? 'User CSV' : 'Simulated'}):</span> 
+                                    {data.dataSources.method.includes('CSV') ? (
+                                        <span> Analyzed from uploaded CSV. Structural domains annotated via AI.</span>
+                                    ) : (
+                                        <span> Using <strong>{data.dataSources.method}</strong> workflow. Comparing {data.dataSources.fluid} vs {data.dataSources.tissue}.</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : null}
             </div>

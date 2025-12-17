@@ -3,6 +3,7 @@ import { ProteinData, SimulationResponse } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Existing simulation function
 export const fetchProteinData = async (query: string): Promise<SimulationResponse> => {
   const model = "gemini-2.5-flash";
   
@@ -15,6 +16,7 @@ export const fetchProteinData = async (query: string): Promise<SimulationRespons
     2. If role is 'Unknown' or non-shedding, ensure 'ectoCtoRatio' is LOW (~1.0).
     3. 'sheddingScore' must be calculated as: Normalized value (0-10) based on (FluidEctoAbundance / TissueAbundance) * ectoCtoRatio.
     4. Provide specific cleavage sites with amino acid positions (e.g., "Arg-560").
+    5. DATA SOURCES: Cite realistic dataset names (e.g., "Human CSF Proteome (Deep Mass Spec)", "Brain Cortex Lysate (HPA)").
     
     Structure the data for log10 plotting (Abundances should be between 1,000 and 10,000,000).
   `;
@@ -44,6 +46,14 @@ export const fetchProteinData = async (query: string): Promise<SimulationRespons
               fluidEctoAbundance: { type: Type.NUMBER },
               tissueAbundance: { type: Type.NUMBER },
               ectoCtoRatio: { type: Type.NUMBER },
+              dataSources: {
+                type: Type.OBJECT,
+                properties: {
+                    fluid: { type: Type.STRING, description: "e.g., Human CSF (Zhang et al.)" },
+                    tissue: { type: Type.STRING, description: "e.g., Brain Cortex (PaxDb)" },
+                    method: { type: Type.STRING, description: "e.g., TMT-Labeled LC-MS/MS" }
+                }
+              },
               domains: {
                 type: Type.ARRAY,
                 items: {
@@ -95,6 +105,102 @@ export const fetchProteinData = async (query: string): Promise<SimulationRespons
   }
 
   return JSON.parse(response.text) as SimulationResponse;
+};
+
+// NEW: Function to annotate user uploaded CSV data
+export const annotateProteinData = async (partialData: Partial<ProteinData>): Promise<SimulationResponse> => {
+    const model = "gemini-2.5-flash";
+    
+    // We only ask the AI for the metadata structure, we trust the user's peptides
+    const prompt = `
+      I have experimental peptide data for the protein: "${partialData.name || partialData.geneSymbol}".
+      
+      I need you to provide the BIOLOGICAL ANNOTATIONS to visualize this data.
+      1. Provide the 'domains' (Signal Peptide, Extracellular, Transmembrane, Cytoplasmic) with accurate Uniprot amino acid positions.
+      2. Provide the 'length' of the protein.
+      3. Provide 'cleavageSites' known in literature.
+      4. Provide a 'description'.
+      5. Determine the 'role' (Sheddase/Substrate).
+      6. Assign the 'location' (Extracellular/Transmembrane/Intracellular) to the provided peptides based on your domain knowledge and their positions.
+      
+      Here is a sample of the user's peptides (start/end positions):
+      ${JSON.stringify(partialData.peptides?.slice(0, 5))}
+    `;
+  
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            // We ask for the missing fields
+            metadata: {
+                type: Type.OBJECT,
+                properties: {
+                    uniprotId: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    length: { type: Type.INTEGER },
+                    role: { type: Type.STRING, enum: ["Sheddase", "Substrate", "Both", "Unknown"] },
+                    knownSubstrates: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    domains: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            name: { type: Type.STRING },
+                            start: { type: Type.INTEGER },
+                            end: { type: Type.INTEGER },
+                            type: { type: Type.STRING, enum: ["Extracellular", "Transmembrane", "Intracellular"] }
+                          }
+                        }
+                    },
+                    cleavageSites: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            position: { type: Type.INTEGER },
+                            protease: { type: Type.STRING },
+                            evidence: { type: Type.STRING }
+                          }
+                        }
+                    }
+                }
+            },
+            interpretation: { type: Type.STRING }
+          }
+        }
+      }
+    });
+  
+    if (!response.text) {
+      throw new Error("Failed to annotate data");
+    }
+  
+    const result = JSON.parse(response.text);
+    const metadata = result.metadata;
+  
+    // Merge User Data with AI Metadata
+    const mergedData: ProteinData = {
+        ...partialData as ProteinData,
+        ...metadata,
+        // Recalculate domain-based metrics if needed or trust user
+        // We need to map the user's peptides to the AI's locations
+        peptides: partialData.peptides?.map(p => {
+            const domain = metadata.domains.find((d: any) => p.start >= d.start && p.start <= d.end);
+            return {
+                ...p,
+                location: domain ? domain.type : 'Extracellular' // Default if not found
+            };
+        }) || []
+    };
+  
+    return {
+        data: mergedData,
+        interpretation: result.interpretation
+    };
 };
 
 export const getInterpretationOnly = async (data: ProteinData): Promise<string> => {

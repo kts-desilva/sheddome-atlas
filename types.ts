@@ -22,6 +22,12 @@ export interface CleavageSite {
   sequenceContext?: string;
 }
 
+export interface DataSources {
+  fluid: string;
+  tissue: string;
+  method: string;
+}
+
 export interface ProteinData {
   name: string;
   geneSymbol: string;
@@ -37,6 +43,7 @@ export interface ProteinData {
   domains: Domain[];
   peptides: Peptide[];
   cleavageSites: CleavageSite[];
+  dataSources: DataSources;
 }
 
 export interface SimulationResponse {
