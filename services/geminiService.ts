@@ -9,10 +9,14 @@ export const fetchProteinData = async (query: string): Promise<SimulationRespons
   const systemInstruction = `
     You are an expert bioinformatics database specialized in proteomic shedding. 
     Generate realistic JSON data for the requested protein.
-    Determine if the protein is primarily a 'Sheddase' (e.g., ADAM10, BACE1) or a 'Substrate' (e.g., APP, NOTCH1).
-    If it is a Sheddase, provide a list of 3-5 known substrates.
-    Include specific cleavage sites with amino acid positions.
-    Provide realistic abundance values suitable for log10 plotting.
+    
+    CRITICAL SCORING LOGIC:
+    1. If role is 'Substrate' or 'Sheddase', ensure 'ectoCtoRatio' is HIGH (>5.0). This indicates specific shedding (head chopped off).
+    2. If role is 'Unknown' or non-shedding, ensure 'ectoCtoRatio' is LOW (~1.0).
+    3. 'sheddingScore' must be calculated as: Normalized value (0-10) based on (FluidEctoAbundance / TissueAbundance) * ectoCtoRatio.
+    4. Provide specific cleavage sites with amino acid positions (e.g., "Arg-560").
+    
+    Structure the data for log10 plotting (Abundances should be between 1,000 and 10,000,000).
   `;
 
   const prompt = `Generate detailed shedding data for protein: "${query}". Ensure geneSymbol is provided.`;

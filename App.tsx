@@ -4,6 +4,7 @@ import SearchBar from './components/SearchBar';
 import PeptideMap from './components/PeptideMap';
 import MetricsPanel from './components/MetricsPanel';
 import GlobalAtlas from './components/GlobalAtlas';
+import LoadingAnimation from './components/LoadingAnimation';
 import { fetchProteinData } from './services/geminiService';
 import { ProteinData } from './types';
 
@@ -19,8 +20,10 @@ const App: React.FC = () => {
   const handleSearch = async (query: string) => {
     setLoading(true);
     setError(null);
-    // Even if on home, switch to dashboard layout with loading state eventually
-    // But typically we wait for data
+    // Stay on current view to show loading animation in context, 
+    // or switch to dashboard if we want a unified loading experience.
+    // Let's keep context for Home, but switch for Dashboard.
+    
     try {
       const result = await fetchProteinData(query);
       setData(result.data);
@@ -64,7 +67,7 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2">
-             <NavItem mode="home" label="Search" icon={ArrowLeft} /> {/* Or Search Icon */}
+             <NavItem mode="home" label="Search" icon={ArrowLeft} />
              <div className="h-6 w-px bg-gray-200 mx-2"></div>
              <NavItem mode="dashboard" label="Protein Dashboard" icon={Activity} />
              <NavItem mode="global" label="Global Atlas" icon={Database} />
@@ -84,20 +87,29 @@ const App: React.FC = () => {
                 <h1 className="text-5xl font-extrabold text-slate-900 mb-6 tracking-tight">
                     Decode the <span className="text-transparent bg-clip-text bg-gradient-to-r from-science-600 to-indigo-600">Secretome</span>
                 </h1>
-                <p className="text-xl text-slate-500 mb-10 leading-relaxed">
-                    Identify substrates, analyze sheddase cleavage sites, and visualize ectodomain shedding events across tissues and fluids.
-                </p>
                 
-                <div className="bg-white p-2 rounded-2xl shadow-xl border border-gray-100 transform transition-all hover:scale-[1.01]">
-                    <SearchBar onSearch={handleSearch} loading={loading} />
-                </div>
+                {loading ? (
+                    <div className="mt-12 bg-white p-8 rounded-3xl shadow-xl border border-science-100">
+                        <LoadingAnimation />
+                    </div>
+                ) : (
+                    <>
+                        <p className="text-xl text-slate-500 mb-10 leading-relaxed">
+                            Identify substrates, analyze sheddase cleavage sites, and visualize ectodomain shedding events across tissues and fluids.
+                        </p>
+                        
+                        <div className="bg-white p-2 rounded-2xl shadow-xl border border-gray-100 transform transition-all hover:scale-[1.01]">
+                            <SearchBar onSearch={handleSearch} loading={loading} />
+                        </div>
 
-                <div className="mt-12 flex gap-4 justify-center text-sm text-gray-400">
-                    <span>Try:</span>
-                    <button onClick={() => handleSearch('EGFR')} className="hover:text-science-600 underline">EGFR</button>
-                    <button onClick={() => handleSearch('ADAM10')} className="hover:text-science-600 underline">ADAM10</button>
-                    <button onClick={() => handleSearch('NOTCH1')} className="hover:text-science-600 underline">NOTCH1</button>
-                </div>
+                        <div className="mt-12 flex gap-4 justify-center text-sm text-gray-400">
+                            <span>Try:</span>
+                            <button onClick={() => handleSearch('EGFR')} className="hover:text-science-600 underline">EGFR</button>
+                            <button onClick={() => handleSearch('ADAM10')} className="hover:text-science-600 underline">ADAM10</button>
+                            <button onClick={() => handleSearch('NOTCH1')} className="hover:text-science-600 underline">NOTCH1</button>
+                        </div>
+                    </>
+                )}
                 
                 {error && <div className="mt-6 text-red-500 bg-red-50 p-3 rounded-lg inline-block">{error}</div>}
             </div>
@@ -117,8 +129,7 @@ const App: React.FC = () => {
                     </div>
                 ) : loading ? (
                     <div className="flex flex-col items-center justify-center py-40">
-                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-science-600"></div>
-                         <p className="mt-4 text-gray-500">Analyzing proteomic data...</p>
+                         <LoadingAnimation />
                     </div>
                 ) : data ? (
                     <div className="space-y-8">
