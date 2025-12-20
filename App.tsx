@@ -170,8 +170,6 @@ const App: React.FC = () => {
                             <div className="mt-12 flex gap-4 justify-center text-sm text-gray-400">
                                 <span>Try:</span>
                                 <button onClick={() => handleSearch('ACE2')} className="hover:text-science-600 underline font-semibold">ACE2 (Local)</button>
-                                <button onClick={() => handleSearch('EGFR')} className="hover:text-science-600 underline">EGFR</button>
-                                <button onClick={() => handleSearch('ADAM10')} className="hover:text-science-600 underline">ADAM10</button>
                             </div>
                         )}
                     </>
