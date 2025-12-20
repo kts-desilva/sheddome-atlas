@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Activity, Database, Scissors, Tag, ChevronRight, ArrowLeft, FlaskConical, Upload, Search as SearchIcon, Loader2 } from 'lucide-react';
+import { Layers, Activity, Database, Scissors, Tag, ChevronRight, ArrowLeft, FlaskConical, Upload, Search as SearchIcon, Loader2, CheckCircle } from 'lucide-react';
 import SearchBar from './components/SearchBar';
 import PeptideMap from './components/PeptideMap';
 import MetricsPanel from './components/MetricsPanel';
@@ -41,7 +41,6 @@ const App: React.FC = () => {
       if (needsAnnotation) {
           setAnnotating(true);
           setError(null);
-          // CSV Uploaded, now fetching biological context
           try {
               const result = await annotateProteinData(uploadedData);
               setData(result.data);
@@ -49,12 +48,11 @@ const App: React.FC = () => {
               setView('dashboard');
           } catch (err) {
               console.error(err);
-              setError("Failed to annotate CSV data using AI. Please check your API key.");
+              setError("Failed to annotate CSV data using AI.");
           } finally {
               setAnnotating(false);
           }
       } else {
-          // JSON Uploaded (Complete)
           setData(uploadedData as ProteinData);
           setInterpretation("Data uploaded by user. Interpretation requires external analysis.");
           setView('dashboard');
@@ -130,7 +128,7 @@ const App: React.FC = () => {
                             }`}
                         >
                             <FlaskConical className="w-4 h-4" />
-                            AI Simulation
+                            Knowledge Base
                         </button>
                         <button 
                              onClick={() => setSourceMode('upload')}
@@ -156,7 +154,7 @@ const App: React.FC = () => {
                             <Loader2 className="w-12 h-12 text-science-600 animate-spin" />
                         </div>
                         <h3 className="text-xl font-bold text-gray-900 mb-2">Annotating Experimental Data</h3>
-                        <p className="text-gray-500">Mapping your CSV peptides to Uniprot domains and calculating shedding scores using AI...</p>
+                        <p className="text-gray-500">Mapping your CSV peptides to Uniprot domains using curated intelligence...</p>
                     </div>
                 ) : (
                     <>
@@ -171,9 +169,9 @@ const App: React.FC = () => {
                         {sourceMode === 'ai' && (
                             <div className="mt-12 flex gap-4 justify-center text-sm text-gray-400">
                                 <span>Try:</span>
+                                <button onClick={() => handleSearch('ACE2')} className="hover:text-science-600 underline font-semibold">ACE2 (Local)</button>
                                 <button onClick={() => handleSearch('EGFR')} className="hover:text-science-600 underline">EGFR</button>
                                 <button onClick={() => handleSearch('ADAM10')} className="hover:text-science-600 underline">ADAM10</button>
-                                <button onClick={() => handleSearch('NOTCH1')} className="hover:text-science-600 underline">NOTCH1</button>
                             </div>
                         )}
                     </>
@@ -192,7 +190,7 @@ const App: React.FC = () => {
                 {!data && !loading ? (
                     <div className="text-center py-20 text-gray-400">
                         <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p>No protein data loaded. Use the Search tab to find a protein.</p>
+                        <p>No protein data loaded.</p>
                         <button onClick={() => setView('home')} className="mt-4 text-science-600 font-medium">Go to Search</button>
                     </div>
                 ) : loading ? (
@@ -210,7 +208,14 @@ const App: React.FC = () => {
                                         {data.geneSymbol}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-3 mb-4">
+                                <div className="flex items-center gap-3 mb-4 flex-wrap">
+                                     {/* Local Badge */}
+                                     {data.dataSources.fluid === 'Curated Local Database' && (
+                                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200 shadow-sm">
+                                            <CheckCircle className="w-3 h-3" /> Verified Record
+                                         </span>
+                                     )}
+
                                      {/* Role Badge */}
                                      {data.role === 'Sheddase' && (
                                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
@@ -249,7 +254,6 @@ const App: React.FC = () => {
                         <MetricsPanel data={data} />
 
                         <div className="grid grid-cols-12 gap-8">
-                            {/* Left Col: Map & Interpretation */}
                             <div className="col-span-12 lg:col-span-8 space-y-8">
                                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                                     <div className="flex items-center justify-between mb-6">
@@ -261,7 +265,7 @@ const App: React.FC = () => {
 
                                 <div className="bg-slate-900 p-8 rounded-2xl shadow-lg text-slate-300">
                                     <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                        Biological Interpretation
+                                        Interpretation & Context
                                     </h3>
                                     <div className="prose prose-invert max-w-none leading-relaxed">
                                         {interpretation}
@@ -269,7 +273,6 @@ const App: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Right Col: Cleavage Site List */}
                             <div className="col-span-12 lg:col-span-4 space-y-8">
                                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm sticky top-24">
                                     <h3 className="font-bold text-lg text-gray-900 mb-4 flex items-center gap-2">
@@ -292,23 +295,24 @@ const App: React.FC = () => {
                                         </ul>
                                     ) : (
                                         <div className="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded-xl border border-gray-100">
-                                            No annotated cleavage sites found.
+                                            No cleavage sites annotated.
                                         </div>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Data Provenance Footer */}
                         {data.dataSources && (
                             <div className="bg-science-50 rounded-xl p-4 border border-science-100 flex flex-col md:flex-row items-center gap-4 text-sm text-science-800">
                                 <FlaskConical className="w-5 h-5 flex-shrink-0" />
                                 <div className="flex-1 text-center md:text-left">
-                                    <span className="font-bold">Data Provenance ({data.dataSources.method.includes('CSV') ? 'User CSV' : 'Simulated'}):</span> 
-                                    {data.dataSources.method.includes('CSV') ? (
-                                        <span> Analyzed from uploaded CSV. Structural domains annotated via AI.</span>
+                                    <span className="font-bold">Provenance:</span> 
+                                    {data.dataSources.fluid === 'Curated Local Database' ? (
+                                        <span> Curated internally in <strong>services/localDatabase.ts</strong>.</span>
+                                    ) : data.dataSources.method.includes('CSV') ? (
+                                        <span> Experimental CSV + AI Annotation.</span>
                                     ) : (
-                                        <span> Using <strong>{data.dataSources.method}</strong> workflow. Comparing {data.dataSources.fluid} vs {data.dataSources.tissue}.</span>
+                                        <span> {data.dataSources.method} ({data.dataSources.fluid} vs {data.dataSources.tissue}).</span>
                                     )}
                                 </div>
                             </div>
