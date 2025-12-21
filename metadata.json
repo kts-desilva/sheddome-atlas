@@ -1,5 +1,5 @@
 {
-  "name": "Sheddome Atlas",
+  "name": "Shedding Atlas",
   "description": "A proteomics visualization tool for analyzing sheddase cleavage sites, peptide mapping, and ectodomain shedding metrics in biological fluids and tissues.",
   "requestFramePermissions": []
 }

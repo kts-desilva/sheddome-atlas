@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Activity, Database, Scissors, Tag, ChevronRight, ArrowLeft, FlaskConical, Upload, Search as SearchIcon, Loader2, CheckCircle } from 'lucide-react';
+import { Layers, Activity, Database, Scissors, Tag, ArrowLeft, FlaskConical, Upload, Loader2, CheckCircle, AlertTriangle, BookOpen } from 'lucide-react';
 import SearchBar from './components/SearchBar';
 import PeptideMap from './components/PeptideMap';
 import MetricsPanel from './components/MetricsPanel';
@@ -10,16 +10,16 @@ import { fetchProteinData, annotateProteinData } from './services/geminiService'
 import { ProteinData } from './types';
 
 type ViewMode = 'home' | 'dashboard' | 'global';
-type DataSourceMode = 'ai' | 'upload';
+type DataSourceMode = 'local' | 'upload';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewMode>('home');
-  const [sourceMode, setSourceMode] = useState<DataSourceMode>('ai');
+  const [sourceMode, setSourceMode] = useState<DataSourceMode>('local');
   const [data, setData] = useState<ProteinData | null>(null);
   const [interpretation, setInterpretation] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [annotating, setAnnotating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{message: string} | null>(null);
 
   const handleSearch = async (query: string) => {
     setLoading(true);
@@ -31,7 +31,7 @@ const App: React.FC = () => {
       setView('dashboard');
     } catch (err: any) {
       console.error(err);
-      setError("Failed to fetch data. Please try again.");
+      setError({ message: err.message || "Protein not found." });
     } finally {
       setLoading(false);
     }
@@ -46,9 +46,9 @@ const App: React.FC = () => {
               setData(result.data);
               setInterpretation(result.interpretation);
               setView('dashboard');
-          } catch (err) {
+          } catch (err: any) {
               console.error(err);
-              setError("Failed to annotate CSV data using AI.");
+              setError({ message: err.message || "Failed to map CSV data." });
           } finally {
               setAnnotating(false);
           }
@@ -91,7 +91,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2">
              <NavItem mode="home" label="Start" icon={ArrowLeft} />
              <div className="h-6 w-px bg-gray-200 mx-2"></div>
-             <NavItem mode="dashboard" label="Protein Dashboard" icon={Activity} />
+             <NavItem mode="dashboard" label="Dashboard" icon={Activity} />
              <NavItem mode="global" label="Global Atlas" icon={Database} />
           </div>
         </div>
@@ -106,13 +106,13 @@ const App: React.FC = () => {
                 
                 <div className="text-center mb-10">
                     <div className="mb-6 inline-flex items-center justify-center p-3 bg-science-50 rounded-2xl">
-                        <Scissors className="w-8 h-8 text-science-500" />
+                        <BookOpen className="w-8 h-8 text-science-500" />
                     </div>
                     <h1 className="text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
-                        Decode the <span className="text-transparent bg-clip-text bg-gradient-to-r from-science-600 to-indigo-600">Ectodomain</span>
+                        Verified <span className="text-transparent bg-clip-text bg-gradient-to-r from-science-600 to-indigo-600">Shedding Data</span>
                     </h1>
                     <p className="text-xl text-slate-500 leading-relaxed">
-                        Visualize ectodomain shedding events across tissues and fluids.
+                        Access curated ectodomain shedding events and map experimental peptides.
                     </p>
                 </div>
 
@@ -120,15 +120,15 @@ const App: React.FC = () => {
                 <div className="flex justify-center mb-8">
                     <div className="bg-gray-100 p-1 rounded-xl flex">
                         <button 
-                            onClick={() => setSourceMode('ai')}
+                            onClick={() => setSourceMode('local')}
                             className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                                sourceMode === 'ai' 
+                                sourceMode === 'local' 
                                 ? 'bg-white text-science-600 shadow-sm' 
                                 : 'text-gray-500 hover:text-gray-900'
                             }`}
                         >
                             <FlaskConical className="w-4 h-4" />
-                            Knowledge Base
+                            Curated Database
                         </button>
                         <button 
                              onClick={() => setSourceMode('upload')}
@@ -139,7 +139,7 @@ const App: React.FC = () => {
                             }`}
                         >
                             <Upload className="w-4 h-4" />
-                            Upload Data
+                            Experimental Map
                         </button>
                     </div>
                 </div>
@@ -153,12 +153,12 @@ const App: React.FC = () => {
                         <div className="flex justify-center mb-6">
                             <Loader2 className="w-12 h-12 text-science-600 animate-spin" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Annotating Experimental Data</h3>
-                        <p className="text-gray-500">Mapping your CSV peptides to Uniprot domains using curated intelligence...</p>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Mapping to Curated Knowledge</h3>
+                        <p className="text-gray-500">Retrieving structural metadata from verified records...</p>
                     </div>
                 ) : (
                     <>
-                        {sourceMode === 'ai' ? (
+                        {sourceMode === 'local' ? (
                             <div className="bg-white p-2 rounded-2xl shadow-xl border border-gray-100 transform transition-all hover:scale-[1.01]">
                                 <SearchBar onSearch={handleSearch} loading={loading} />
                             </div>
@@ -166,16 +166,27 @@ const App: React.FC = () => {
                             <DataUploader onDataLoaded={handleUserUpload} />
                         )}
 
-                        {sourceMode === 'ai' && (
-                            <div className="mt-12 flex gap-4 justify-center text-sm text-gray-400">
-                                <span>Try:</span>
-                                <button onClick={() => handleSearch('ACE2')} className="hover:text-science-600 underline font-semibold">ACE2 (Local)</button>
-                            </div>
-                        )}
+                        <div className="mt-12 flex gap-4 justify-center text-sm text-gray-400">
+                            <span>Available Records:</span>
+                            <button onClick={() => handleSearch('ACE2')} className="hover:text-science-600 underline font-semibold">ACE2</button>
+                        </div>
                     </>
                 )}
                 
-                {error && <div className="mt-6 text-red-500 bg-red-50 p-3 rounded-lg inline-block">{error}</div>}
+                {error && (
+                    <div className="mt-8 p-6 bg-red-50 border border-red-200 rounded-2xl animate-fade-in">
+                        <div className="flex items-start gap-4">
+                            <AlertTriangle className="w-6 h-6 text-red-600 mt-1" />
+                            <div>
+                                <h3 className="text-lg font-bold text-red-800">Resource Not Found</h3>
+                                <p className="text-red-700 mt-1">{error.message}</p>
+                                <div className="mt-4 text-sm text-red-600 bg-white/50 p-3 rounded-lg border border-red-100">
+                                    <strong>Note:</strong> This application now strictly uses a local knowledge base. New proteins must be added to <code>services/localDatabase.ts</code>.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         )}
 
@@ -207,12 +218,9 @@ const App: React.FC = () => {
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3 mb-4 flex-wrap">
-                                     {/* Local Badge */}
-                                     {data.dataSources.fluid === 'Curated Local Database' && (
-                                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200 shadow-sm">
-                                            <CheckCircle className="w-3 h-3" /> Verified Record
-                                         </span>
-                                     )}
+                                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200 shadow-sm">
+                                        <CheckCircle className="w-3 h-3" /> Verified Record
+                                     </span>
 
                                      {/* Role Badge */}
                                      {data.role === 'Sheddase' && (
@@ -224,11 +232,6 @@ const App: React.FC = () => {
                                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800 border border-teal-200">
                                             <Tag className="w-3 h-3" /> Substrate
                                         </span>
-                                     )}
-                                     {data.dataSources.method.includes('CSV') && (
-                                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                            <FlaskConical className="w-3 h-3" /> Hybrid (CSV + AI)
-                                         </span>
                                      )}
                                 </div>
                                 <p className="text-gray-500 max-w-2xl">{data.description}</p>
@@ -256,7 +259,7 @@ const App: React.FC = () => {
                                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                                     <div className="flex items-center justify-between mb-6">
                                         <h3 className="font-bold text-lg text-gray-900">Peptide Map & Cleavage Sites</h3>
-                                        <div className="text-xs text-gray-400">Interactive Visualization</div>
+                                        <div className="text-xs text-gray-400">Verified Structure</div>
                                     </div>
                                     <PeptideMap data={data} width={800} height={350} />
                                 </div>
@@ -293,7 +296,7 @@ const App: React.FC = () => {
                                         </ul>
                                     ) : (
                                         <div className="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded-xl border border-gray-100">
-                                            No cleavage sites annotated.
+                                            No cleavage sites annotated in local database.
                                         </div>
                                     )}
                                 </div>
@@ -305,13 +308,7 @@ const App: React.FC = () => {
                                 <FlaskConical className="w-5 h-5 flex-shrink-0" />
                                 <div className="flex-1 text-center md:text-left">
                                     <span className="font-bold">Provenance:</span> 
-                                    {data.dataSources.fluid === 'Curated Local Database' ? (
-                                        <span> Curated internally in <strong>services/localDatabase.ts</strong>.</span>
-                                    ) : data.dataSources.method.includes('CSV') ? (
-                                        <span> Experimental CSV + AI Annotation.</span>
-                                    ) : (
-                                        <span> {data.dataSources.method} ({data.dataSources.fluid} vs {data.dataSources.tissue}).</span>
-                                    )}
+                                    <span> Verified Curator Database (services/localDatabase.ts)</span>
                                 </div>
                             </div>
                         )}

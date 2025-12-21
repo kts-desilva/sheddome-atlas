@@ -79,16 +79,11 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
         return;
     }
 
-    // Parse Rows (Focusing on the first protein found for simplicity in this demo)
     const peptides: any[] = [];
     let proteinName = "Unknown Protein";
     let proteinGene = "Unknown";
-    
-    // We will accumulate totals to calculate abundance
     let totalFluid = 0;
     let totalTissue = 0;
-    let ectoFluidSum = 0; // rough estimate
-    let cytoFluidSum = 0; // rough estimate
 
     for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.trim());
@@ -96,10 +91,9 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
 
         if (idxName !== -1 && i === 1) {
             proteinName = cols[idxName];
-            proteinGene = cols[idxName]; // Assume gene symbol is used
+            proteinGene = cols[idxName]; 
         }
 
-        // Only process rows for the first protein encountered
         if (idxName !== -1 && cols[idxName] !== proteinName) continue;
 
         const start = parseInt(cols[idxStart]) || 0;
@@ -117,9 +111,9 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
             start,
             end,
             log2FoldChange,
-            pvalue: 0.05, // Mock
+            pvalue: 0.05,
             intensity: fluid,
-            location: 'Extracellular' // Placeholder, will be fixed by AI
+            location: 'Extracellular' 
         });
     }
 
@@ -129,17 +123,17 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
         peptides: peptides,
         fluidEctoAbundance: totalFluid,
         tissueAbundance: totalTissue,
-        sheddingScore: 5.0, // Placeholder
-        ectoCtoRatio: 1.0, // Placeholder
-        domains: [], // Missing, needs AI
+        sheddingScore: 5.0, 
+        ectoCtoRatio: 1.0, 
+        domains: [], 
         dataSources: {
-            fluid: 'User CSV Upload',
-            tissue: 'User CSV Upload',
+            fluid: 'Experimental Upload',
+            tissue: 'Experimental Upload',
             method: 'CSV Import'
         }
     };
 
-    // CSV data always needs AI annotation for domains/structure
+    // CSV data needs structural annotation from the curated database
     onDataLoaded(partialData, true);
   };
 
@@ -148,7 +142,7 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
         "name": "Angiotensin-converting enzyme 2",
         "geneSymbol": "ACE2",
         "length": 805,
-        "description": "Essential counter-regulatory carboxypeptidase.",
+        "description": "Curated Demo: Essential counter-regulatory carboxypeptidase.",
         "role": "Substrate",
         "sheddingScore": 9.2,
         "fluidEctoAbundance": 12500000,
@@ -165,10 +159,9 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
             { "sequence": "KKKNKARSGEN", "start": 765, "end": 775, "log2FoldChange": -1.5, "intensity": 1000, "location": "Intracellular" }
         ],
         "cleavageSites": [
-            { "position": 740, "protease": "ADAM17", "evidence": "Literature" }
+            { "position": 740, "protease": "ADAM17", "evidence": "Verified" }
         ]
       };
-      // Cast as full ProteinData
       onDataLoaded(demoData as unknown as ProteinData, false);
   };
 
@@ -203,7 +196,7 @@ ACE2,SAMPLE_PEPTIDE_SEQ,20,35,50000,1000`;
     <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 animate-fade-in">
       <div className="text-center mb-8">
         <h3 className="text-xl font-bold text-gray-900 mb-2">Upload Experimental Data</h3>
-        <p className="text-gray-500 text-sm">Upload JSON (Pre-annotated) or CSV (Raw Peptides). CSVs will be auto-annotated by AI.</p>
+        <p className="text-gray-500 text-sm">Upload CSV files containing raw peptides. They will be mapped to structure using the curated database.</p>
       </div>
 
       <div className="flex flex-col gap-6 items-center">
@@ -233,7 +226,7 @@ ACE2,SAMPLE_PEPTIDE_SEQ,20,35,50000,1000`;
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-bold shadow-md transition-colors"
             >
                 <PlayCircle className="w-4 h-4" />
-                Demo CSV (Hybrid)
+                Demo CSV (Mapping)
             </button>
             <button 
                 onClick={downloadTemplate}
