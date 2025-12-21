@@ -1,12 +1,15 @@
 {
   "name": "sheddomeatlas",
   "private": true,
+  "homepage": "https://kts-desilva.github.io/sheddome-atlas/",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "react": "^19.2.3",
