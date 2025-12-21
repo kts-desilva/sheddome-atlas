@@ -84,7 +84,7 @@ const App: React.FC = () => {
                <Layers className="text-white w-5 h-5" />
             </div>
             <span className="text-xl font-bold tracking-tight">
-              Shedding<span className="text-science-600">Atlas</span>
+              Sheddome<span className="text-science-600">Atlas</span>
             </span>
           </div>
           
@@ -208,18 +208,23 @@ const App: React.FC = () => {
                     </div>
                 ) : data ? (
                     <div className="space-y-8">
-                        {/* Protein Header */}
+                        {/* Protein Header - SWAPPED TO GENE SYMBOL AS PRIMARY */}
                         <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between gap-6">
-                            <div>
-                                <div className="flex items-center gap-3 mb-2">
-                                    <h1 className="text-4xl font-bold text-gray-900">{data.name}</h1>
-                                    <span className="px-3 py-1 bg-gray-100 text-gray-600 font-mono text-sm rounded-md border border-gray-200">
+                            <div className="flex-1">
+                                <div className="flex items-baseline gap-4 mb-2">
+                                    <h1 className="text-5xl font-extrabold text-science-600 tracking-tight">
                                         {data.geneSymbol}
+                                    </h1>
+                                    <span className="text-2xl font-bold text-gray-400 border-l border-gray-200 pl-4">
+                                        {data.name}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3 mb-4 flex-wrap">
                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200 shadow-sm">
                                         <CheckCircle className="w-3 h-3" /> Verified Record
+                                     </span>
+                                     <span className="px-2 py-0.5 bg-gray-100 text-gray-500 font-mono text-[10px] rounded border border-gray-200">
+                                        {data.uniprotId}
                                      </span>
 
                                      {/* Role Badge */}
@@ -234,12 +239,12 @@ const App: React.FC = () => {
                                         </span>
                                      )}
                                 </div>
-                                <p className="text-gray-500 max-w-2xl">{data.description}</p>
+                                <p className="text-gray-500 max-w-2xl leading-relaxed">{data.description}</p>
                             </div>
 
                             {/* Known Substrates / Sheddases Panel */}
                             {data.role === 'Sheddase' && data.knownSubstrates && (
-                                <div className="md:w-1/3 bg-purple-50 rounded-xl p-4 border border-purple-100">
+                                <div className="md:w-1/3 bg-purple-50 rounded-xl p-4 border border-purple-100 self-start">
                                     <h3 className="text-xs font-bold text-purple-800 uppercase tracking-wide mb-2">Reported Substrates</h3>
                                     <div className="flex flex-wrap gap-2">
                                         {data.knownSubstrates.map((sub, i) => (
@@ -259,7 +264,7 @@ const App: React.FC = () => {
                                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                                     <div className="flex items-center justify-between mb-6">
                                         <h3 className="font-bold text-lg text-gray-900">Peptide Map & Cleavage Sites</h3>
-                                        <div className="text-xs text-gray-400">Verified Structure</div>
+                                        <div className="text-xs text-gray-400">Verified Structure: {data.geneSymbol}</div>
                                     </div>
                                     <PeptideMap data={data} width={800} height={350} />
                                 </div>

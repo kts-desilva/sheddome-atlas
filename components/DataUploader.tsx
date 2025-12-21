@@ -47,7 +47,6 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
       setError("Invalid JSON Format.");
       return;
     }
-    // Assume JSON is fully complete if it has domains
     const needsAnnotation = !json.domains || json.domains.length === 0;
     
     const normalizedData: Partial<ProteinData> = {
@@ -66,8 +65,9 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
 
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
     
-    // Basic CSV Mapping
-    const idxName = headers.findIndex(h => h.includes('protein') || h.includes('gene'));
+    // Improved CSV Header Mapping
+    const idxName = headers.findIndex(h => h === 'proteinid' || h === 'protein' || h === 'id' || h === 'name');
+    const idxGene = headers.findIndex(h => h === 'genesymbol' || h === 'gene' || h === 'symbol' || h === 'genename');
     const idxSeq = headers.findIndex(h => h.includes('sequence') || h.includes('peptide'));
     const idxStart = headers.findIndex(h => h.includes('start'));
     const idxEnd = headers.findIndex(h => h.includes('end'));
@@ -89,12 +89,15 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
         const cols = lines[i].split(',').map(c => c.trim());
         if (cols.length < headers.length) continue;
 
-        if (idxName !== -1 && i === 1) {
-            proteinName = cols[idxName];
-            proteinGene = cols[idxName]; 
+        // Set global protein identifiers from the first valid row
+        if (i === 1) {
+            if (idxName !== -1) proteinName = cols[idxName];
+            if (idxGene !== -1) {
+                proteinGene = cols[idxGene];
+            } else if (idxName !== -1) {
+                proteinGene = cols[idxName]; // Fallback if no GeneSymbol column
+            }
         }
-
-        if (idxName !== -1 && cols[idxName] !== proteinName) continue;
 
         const start = parseInt(cols[idxStart]) || 0;
         const end = parseInt(cols[idxEnd]) || 0;
@@ -133,7 +136,6 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
         }
     };
 
-    // CSV data needs structural annotation from the curated database
     onDataLoaded(partialData, true);
   };
 
@@ -166,23 +168,24 @@ const DataUploader: React.FC<DataUploaderProps> = ({ onDataLoaded }) => {
   };
 
   const loadDemoCsv = () => {
-    const csvContent = `ProteinId,PeptideSequence,Start,End,Intensity_Fluid,Intensity_Tissue
-ACE2,STIEEQAKTFLDKFNHEAEDLFYQSS,19,45,850000,20000
-ACE2,GLTTEPHKSNAT,100,112,720000,15000
-ACE2,MYPGIQVSNNKY,250,262,900000,18000
-ACE2,AWDLGKGDFRI,400,411,680000,14000
-ACE2,VVEKLNQLGT,600,610,750000,16000
-ACE2,LGANQGFEA,720,729,500000,12000
-ACE2,IVSLCTCVFAA,745,755,20000,80000
-ACE2,KKKNKARSGEN,765,775,1000,95000
-ACE2,PYNASRIRK,780,788,500,98000`;
+    // Note: Included GeneSymbol column explicitly in demo
+    const csvContent = `ProteinId,GeneSymbol,PeptideSequence,Start,End,Intensity_Fluid,Intensity_Tissue
+P0DTC2,ACE2,STIEEQAKTFLDKFNHEAEDLFYQSS,19,45,850000,20000
+P0DTC2,ACE2,GLTTEPHKSNAT,100,112,720000,15000
+P0DTC2,ACE2,MYPGIQVSNNKY,250,262,900000,18000
+P0DTC2,ACE2,AWDLGKGDFRI,400,411,680000,14000
+P0DTC2,ACE2,VVEKLNQLGT,600,610,750000,16000
+P0DTC2,ACE2,LGANQGFEA,720,729,500000,12000
+P0DTC2,ACE2,IVSLCTCVFAA,745,755,20000,80000
+P0DTC2,ACE2,KKKNKARSGEN,765,775,1000,95000
+P0DTC2,ACE2,PYNASRIRK,780,788,500,98000`;
     
     processCsvData(csvContent);
   };
 
   const downloadTemplate = () => {
-    const csvContent = `ProteinId,PeptideSequence,Start,End,Intensity_Fluid,Intensity_Tissue
-ACE2,SAMPLE_PEPTIDE_SEQ,20,35,50000,1000`;
+    const csvContent = `ProteinId,GeneSymbol,PeptideSequence,Start,End,Intensity_Fluid,Intensity_Tissue
+ACE2_HUMAN,ACE2,SAMPLE_PEPTIDE_SEQ,20,35,50000,1000`;
     const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", dataStr);
@@ -196,11 +199,10 @@ ACE2,SAMPLE_PEPTIDE_SEQ,20,35,50000,1000`;
     <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 animate-fade-in">
       <div className="text-center mb-8">
         <h3 className="text-xl font-bold text-gray-900 mb-2">Upload Experimental Data</h3>
-        <p className="text-gray-500 text-sm">Upload CSV files containing raw peptides. They will be mapped to structure using the curated database.</p>
+        <p className="text-gray-500 text-sm">Upload CSV files containing raw peptides. Map identifiers like <strong>GeneSymbol</strong> to verified records.</p>
       </div>
 
       <div className="flex flex-col gap-6 items-center">
-        {/* Drop Zone */}
         <label className="w-full flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 hover:border-science-400 transition-all group">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 <div className="bg-science-50 p-4 rounded-full mb-3 group-hover:scale-110 transition-transform flex gap-2">
@@ -226,7 +228,7 @@ ACE2,SAMPLE_PEPTIDE_SEQ,20,35,50000,1000`;
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm font-bold shadow-md transition-colors"
             >
                 <PlayCircle className="w-4 h-4" />
-                Demo CSV (Mapping)
+                Demo CSV (GeneSymbol)
             </button>
             <button 
                 onClick={downloadTemplate}
