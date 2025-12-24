@@ -35,6 +35,32 @@ export const LOCAL_PROTEINS: ProteinData[] = [
     cleavageSites: [
       { position: 740, protease: "ADAM17", evidence: "Verified (PMID: 15194784)" }
     ]
+  },
+    {
+    name: "CUB domain-containing protein 1",
+    geneSymbol: "CDCP1",
+    uniprotId: "Q9H5V8",
+    role: "Substrate",
+    length: 836,
+    description: "Verified local record: Essential counter-regulatory carboxypeptidase. Known substrate of TMPRSS4.",
+    sheddingScore: 9.5,
+    fluidEctoAbundance: 15000000,
+    tissueAbundance: 5000000,
+    ectoCtoRatio: 22.0,
+    dataSources: {
+      fluid: "Curated Local Database",
+      tissue: "Curated Local Database",
+      method: "Literature Review / Verified Exp."
+    },
+    domains: [
+      { name: "Signal Peptide", start: 1, end: 29, type: "Extracellular" },
+      { name: "Ectodomain", start: 30, end: 667, type: "Extracellular" },
+      { name: "Transmembrane", start: 668, end: 688, type: "Transmembrane" }
+    ],
+    peptides: [],
+    cleavageSites: [
+      { position: 368, protease: "TMPRSS4", evidence: "Verified (PMID: 20551327)" }
+    ]
   }
   // Add more proteins here...
 ];
